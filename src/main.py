@@ -21,6 +21,7 @@ import os
 import socket
 import time
 import yaml
+import random
 
 # ------ Fill the relevant protocol connection address and port URL here. ------
 discovery_url = os.environ.get('PROTOCOL_URL')
@@ -52,6 +53,19 @@ f.close()
 # Method to fetch the OPC-UA Node value with given namespace and identifier
 async def fetchOneDataPoint(identifier, client):
     try:
+        if "relay" in identifier.lower():
+            print(f"Der Wert '{value}' enthält 'relay'.")
+            value = "1"
+        elif "dust" in identifier.lower():
+            print(f"Der Wert '{value}' enthält 'dust'.")
+            value = round(random.uniform(0.0, 1.0), 2)
+        elif "temperature" in identifier.lower():
+            print(f"Der Wert '{value}' enthält 'temperature'.")
+            value = round(random.uniform(15.0, 30.0), 1)
+        else:
+            print(f"Der Wert '{value}' enthält keines der Schlüsselwörter ('relay', 'dust', 'temperature').")
+            # Code für den Standardfall
+
         # Fill value from your data server connected client w.r.t to identifier (for example, in MQTT, identifier here is topic )
         value = ""
     except Exception as e:
