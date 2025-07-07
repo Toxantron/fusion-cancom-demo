@@ -1,18 +1,53 @@
-name: Docker Image CI
+name: Build and Push Docker Image to GHCR
 
 on:
   push:
-    branches: [ "demo" ]
-  pull_request:
-    branches: [ "demo" ]
+    branches:
+      - demo # Oder ein anderer Branch, z.B. "master"
+    tags:
+      - 'v*' # Trigger bei Tags wie v1.0, v1.1.2 usw.
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }} # Verwendet den Repository-Namen als Image-Namen
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Benötigt, um den Code auszuchecken
+      packages: write # Benötigt, um in die GHCR zu pushen
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # Der automatisch generierte Token
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Der Build-Kontext, normalerweise das Root-Verzeichnis deines Repos
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Wenn dein Dockerfile nicht im Root-Verzeichnis ist, kannst du es hier angeben:
+          # file: ./path/to/your/Dockerfile
